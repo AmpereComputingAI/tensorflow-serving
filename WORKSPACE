@@ -1,22 +1,10 @@
 workspace(name = "tf_serving")
 
 # ===== TensorFlow dependency =====
-#
-# TensorFlow is imported here instead of in tf_serving_workspace() because
-# existing automation scripts that bump the TF commit hash expect it here.
-#
-# To update TensorFlow to a new revision.
-# 1. Update the 'git_commit' args below to include the new git hash.
-# 2. Get the sha256 hash of the archive with a command such as...
-#    curl -L https://github.com/tensorflow/tensorflow/archive/<git hash>.tar.gz | sha256sum
-#    and update the 'sha256' arg with the result.
-# 3. Request the new archive to be mirrored on mirror.bazel.build for more
-#    reliable downloads.
-load("//tensorflow_serving:repo.bzl", "tensorflow_http_archive")
-tensorflow_http_archive(
+local_repository(
     name = "org_tensorflow",
-    sha256 = "ff0df77ec72676d3260502dd19f34518ecd65bb9ead4f7dfdf8bd11cff8640e3",
-    git_commit = "c256c071bb26e1e13b4666d1b3e229e110bc914a",
+    path = "../tensorflow-dls"
+#    path = "third_party/tensorflow-dls"
 )
 
 # Import all of TensorFlow Serving's external dependencies.
@@ -31,7 +19,7 @@ load(
     "@org_tensorflow//tensorflow:version_check.bzl",
     "check_bazel_version_at_least"
 )
-check_bazel_version_at_least("3.7.2")
+check_bazel_version_at_least("4.2.1")
 
 # Initialize TensorFlow's external dependencies.
 load("@org_tensorflow//tensorflow:workspace3.bzl", "workspace")
