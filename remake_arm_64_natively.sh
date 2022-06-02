@@ -41,6 +41,7 @@ TF_COPTS="--copt=-funsafe-math-optimizations \
   --copt=-march=${ARM_MARCH}    \
   --jobs=$JOBS                  \
   --linkopt=-L/usr/local/lib    \
+  --config=monolithic		\
   --copt=-DDLS_ARM64"
 
 TF_SERVING_BUILD_OPTIONS="--config=release"
