@@ -1,3 +1,65 @@
+# Release 2.8.2
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* Replace int64 with int64_t and uint64 with uint64_t. (commit: 21360c763767823b82768ce42c5c90c0c9012601)
+* update to latest benchmark API changes (commit: 860e1013385289ad3f9eb4d854b55c23e7cb8087)
+* This release is based on TF version 2.8.2
+
+# Release 2.8.0
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* Force-allow labels for the models which are not yet loaded. The feature is meant to be used for non-prod environments only as it may break the serving until relevant models are not loaded yet. (commit: 988bbce80038ac0b7141dcb4413124ba486344cf)
+* Update CreateRPC API interface. (commit: 2e7ca90c18f310c542ed0dcde92d676db6454285)
+* Add `--tensorflow_session_config_file` flag to tf serving model server to support custom SessionConfig (commit: 342a8088524c33f68e3eb4d66800f01a777ceb38)
+* Add `--experimental_cc_shared_library` by default to all builds. (commit: 49b138fdd4c0fb7170736193063c6f03dfb4dba4)
+* Add --num_request_iterations_for_warmup flag (fixes #1949) (commit: 2a55aec18cc1923ece84c7fcf701185306ef99b1)
+
+# Release 2.5.4
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.5.3
+
+# Release 2.6.3
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.6.3
+
 # Release 2.6.0
 
 ## Major Features and Improvements

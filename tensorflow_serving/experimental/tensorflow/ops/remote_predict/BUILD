@@ -26,6 +26,7 @@ cc_library(
         "@org_tensorflow//tensorflow/core:framework_headers_lib",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/kernels:ops_util_hdrs",
+        "@org_tensorflow//tensorflow/core/platform:statusor",
     ],
     alwayslink = 1,
 )
@@ -96,6 +97,7 @@ tf_kernel_library(
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/kernels:ops_util",
         "@org_tensorflow//tensorflow/core/kernels:split_lib",
+        "@org_tensorflow//tensorflow/core/platform:statusor",
     ],
 )
 
@@ -119,7 +121,6 @@ tf_custom_op_py_library(
     visibility = ["//tensorflow_serving/experimental/example:__subpackages__"],
     deps = [
         ":gen_remote_predict_op",
-        "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/python:framework_for_generated_wrappers",
     ],
 )
@@ -163,6 +164,7 @@ cc_library(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
+        "@org_tensorflow//tensorflow/core/platform:statusor",
     ],
 )
 

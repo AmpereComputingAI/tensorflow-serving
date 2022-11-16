@@ -50,6 +50,9 @@ limitations under the License.
 #include "tensorflow/compiler/jit/flags.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/init_main.h"
+#if defined(LIBTPU_ON_GCE)
+#include "tensorflow/core/tpu/tpu_global_init.h"
+#endif
 #include "tensorflow/core/util/command_line_flags.h"
 #include "tensorflow_serving/model_servers/server.h"
 #include "tensorflow_serving/model_servers/version.h"
@@ -156,6 +159,14 @@ int main(int argc, char** argv) {
                        "Tensorflow session. Auto-configured by default."
                        "Note that this option is ignored if "
                        "--platform_config_file is non-empty."),
+      tensorflow::Flag(
+          "tensorflow_session_config_file",
+          &options.tensorflow_session_config_file,
+          "If non-empty, read an ascii TensorFlow Session "
+          "ConfigProto protobuf from the supplied file name. Note, "
+          "parts of the session config (threads, parallelism etc.) "
+          "can be overridden if needed, via corresponding command "
+          "line flags."),
       tensorflow::Flag("tensorflow_intra_op_parallelism",
                        &options.tensorflow_intra_op_parallelism,
                        "Number of threads to use to parallelize the execution"
@@ -200,6 +211,10 @@ int main(int argc, char** argv) {
                        "Enables model warmup, which triggers lazy "
                        "initializations (such as TF optimizations) at load "
                        "time, to reduce first request latency."),
+      tensorflow::Flag("num_request_iterations_for_warmup",
+                       &options.num_request_iterations_for_warmup,
+                       "Number of times a request is iterated during warmup "
+                       "replay. This value is used only if > 0."),
       tensorflow::Flag("version", &display_version, "Display version"),
       tensorflow::Flag(
           "monitoring_config_file", &options.monitoring_config_file,
@@ -253,6 +268,12 @@ int main(int argc, char** argv) {
     std::cout << usage;
     return -1;
   }
+
+#if defined(LIBTPU_ON_GCE)
+  std::cout << "Initializing TPU system.";
+  TF_QCHECK_OK(tensorflow::InitializeTPUSystemGlobally())
+      << "Failed to intialize the TPU system.";
+#endif
 
   if (display_version) {
     std::cout << "TensorFlow ModelServer: " << TF_Serving_Version() << "\n"

@@ -47,8 +47,8 @@ limitations under the License.
 #include "tensorflow_serving/core/availability_preserving_policy.h"
 #include "tensorflow_serving/model_servers/grpc_status_util.h"
 #include "tensorflow_serving/model_servers/model_platform_types.h"
-#include "tensorflow_serving/model_servers/platform_config_util.h"
 #include "tensorflow_serving/model_servers/server_core.h"
+#include "tensorflow_serving/model_servers/server_init.h"
 #include "tensorflow_serving/servables/tensorflow/session_bundle_config.pb.h"
 #include "tensorflow_serving/servables/tensorflow/thread_pool_factory_config.pb.h"
 #include "tensorflow_serving/servables/tensorflow/util.h"
@@ -245,6 +245,12 @@ Status Server::BuildAndStart(const Options& server_options) {
           "server_options.enable_batching to true.");
     }
 
+    if (!server_options.tensorflow_session_config_file.empty()) {
+      TF_RETURN_IF_ERROR(
+          ParseProtoTextFile(server_options.tensorflow_session_config_file,
+                             session_bundle_config.mutable_session_config()));
+    }
+
     session_bundle_config.mutable_session_config()
         ->mutable_gpu_options()
         ->set_per_process_gpu_memory_fraction(
@@ -294,11 +300,16 @@ Status Server::BuildAndStart(const Options& server_options) {
     session_bundle_config.set_num_tflite_interpreters_per_pool(
         server_options.num_tflite_interpreters_per_pool);
     session_bundle_config.set_num_tflite_pools(server_options.num_tflite_pools);
-    options.platform_config_map =
-        CreateTensorFlowPlatformConfigMap(session_bundle_config);
+
+    TF_RETURN_IF_ERROR(
+        tensorflow::serving::init::SetupPlatformConfigMapForTensorFlow(
+            session_bundle_config, options.platform_config_map));
   } else {
     TF_RETURN_IF_ERROR(ParseProtoTextFile<PlatformConfigMap>(
         server_options.platform_config_file, &options.platform_config_map));
+    TF_RETURN_IF_ERROR(
+        tensorflow::serving::init::UpdatePlatformConfigMapForTensorFlow(
+            options.platform_config_map));
   }
 
   options.custom_model_config_loader = &LoadCustomModelConfig;
@@ -314,6 +325,8 @@ Status Server::BuildAndStart(const Options& server_options) {
   options.flush_filesystem_caches = server_options.flush_filesystem_caches;
   options.allow_version_labels_for_unavailable_models =
       server_options.allow_version_labels_for_unavailable_models;
+  options.force_allow_any_version_labels_for_unavailable_models =
+      server_options.force_allow_any_version_labels_for_unavailable_models;
   options.enable_cors_support = server_options.enable_cors_support;
 
   TF_RETURN_IF_ERROR(ServerCore::Create(std::move(options), &server_core_));
@@ -341,7 +354,7 @@ Status Server::BuildAndStart(const Options& server_options) {
       "0.0.0.0:" + std::to_string(server_options.grpc_port);
   model_service_ = absl::make_unique<ModelServiceImpl>(server_core_.get());
 
-  PredictionServiceImpl::Options predict_server_options;
+  PredictionServiceOptions predict_server_options;
   predict_server_options.server_core = server_core_.get();
   predict_server_options.enforce_session_run_timeout =
       server_options.enforce_session_run_timeout;
@@ -355,9 +368,8 @@ Status Server::BuildAndStart(const Options& server_options) {
         &thread_pool_factory_));
   }
   predict_server_options.thread_pool_factory = thread_pool_factory_.get();
-  prediction_service_ =
-      absl::make_unique<PredictionServiceImpl>(predict_server_options);
-
+  prediction_service_ = tensorflow::serving::init::CreatePredictionService(
+      predict_server_options);
 
   ::grpc::ServerBuilder builder;
   // If defined, listen to a tcp port for gRPC/HTTP.

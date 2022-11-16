@@ -23,8 +23,8 @@ limitations under the License.
 #define TF_MODELSERVER_STR(x) TF_MODELSERVER_STR_HELPER(x)
 
 #define TF_MODELSERVER_MAJOR_VERSION 2
-#define TF_MODELSERVER_MINOR_VERSION 7
-#define TF_MODELSERVER_PATCH_VERSION 0
+#define TF_MODELSERVER_MINOR_VERSION 9
+#define TF_MODELSERVER_PATCH_VERSION 2
 // TF_MODELSERVER_VERSION_SUFFIX is non-empty for pre-releases
 // (e.g. "-alpha", "-alpha.1", "-beta", "-rc", "-rc.1")
 #define TF_MODELSERVER_VERSION_SUFFIX "-rc1"

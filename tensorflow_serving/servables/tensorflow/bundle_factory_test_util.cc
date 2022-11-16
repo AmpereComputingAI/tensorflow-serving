@@ -22,6 +22,7 @@ limitations under the License.
 #include "tensorflow/core/lib/core/status_test_util.h"
 #include "tensorflow/core/lib/io/path.h"
 #include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/threadpool_options.h"
 #include "tensorflow_serving/resources/resource_values.h"
 #include "tensorflow_serving/test_util/test_util.h"
 
@@ -73,12 +74,12 @@ std::vector<string> GetTestSavedModelBundleExportFiles() {
       tensorflow::io::JoinPath(dir, "variables/variables.data-00000-of-00001")};
 }
 
-uint64 GetTotalFileSize(const std::vector<string>& files) {
-  uint64 total_file_size = 0;
+uint64_t GetTotalFileSize(const std::vector<string>& files) {
+  uint64_t total_file_size = 0;
   for (const string& file : files) {
     if (!(Env::Default()->IsDirectory(file).ok()) &&
         Env::Default()->FileExists(file).ok()) {
-      uint64 file_size;
+      uint64_t file_size;
       TF_CHECK_OK(Env::Default()->GetFileSize(file, &file_size));
       total_file_size += file_size;
     }
@@ -111,7 +112,10 @@ void TestSingleRequest(Session* session) {
   const std::vector<string> empty_targets;
   std::vector<Tensor> outputs;
 
-  TF_ASSERT_OK(session->Run(inputs, output_names, empty_targets, &outputs));
+  RunMetadata run_metadata;
+  TF_ASSERT_OK(session->Run(RunOptions{}, inputs, output_names, empty_targets,
+                            &outputs, &run_metadata,
+                            thread::ThreadPoolOptions{}));
 
   ASSERT_EQ(1, outputs.size());
   const auto& single_output = outputs.at(0);
@@ -134,7 +138,7 @@ ResourceAllocation GetExpectedResourceEstimate(double total_file_size) {
   // match the constants defined in bundle_factory_util.cc.
   const double kResourceEstimateRAMMultiplier = 1.2;
   const int kResourceEstimateRAMPadBytes = 0;
-  const uint64 expected_ram_requirement =
+  const uint64_t expected_ram_requirement =
       total_file_size * kResourceEstimateRAMMultiplier +
       kResourceEstimateRAMPadBytes;
   ResourceAllocation resource_alloc;

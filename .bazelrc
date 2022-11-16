@@ -7,7 +7,6 @@ build --verbose_failures=true
 build --spawn_strategy=standalone
 build --genrule_strategy=standalone
 build --define=grpc_no_ares=true
-build --incompatible_blacklisted_protos_requires_proto_info=false
 build --experimental_ui_max_stdouterr_bytes=10485760
 build --config=monolithic
 

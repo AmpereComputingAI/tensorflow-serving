@@ -84,6 +84,7 @@ cc_library(
         "//tensorflow_serving/servables/tensorflow:session_bundle_config_cc_proto",
         "//tensorflow_serving/test_util",
         "@com_google_googletest//:gtest",
+        "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core:test",
     ],
 )
@@ -123,7 +124,6 @@ py_library(
     deps = [
         "//tensorflow_serving/apis:predict_proto_py_pb2",
         "//tensorflow_serving/apis:prediction_service_proto_py_pb2",
-        "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/core:protos_all_py",
         "@org_tensorflow//tensorflow/python:platform",
         "@org_tensorflow//tensorflow/python/saved_model:signature_constants",

@@ -183,6 +183,7 @@ cc_test(
         ":model_platform_types",
         ":platform_config_util",
         ":server_core",
+        ":server_init",
         "//tensorflow_serving/core:availability_preserving_policy",
         "//tensorflow_serving/core/test_util:test_main",
         "//tensorflow_serving/servables/tensorflow:saved_model_bundle_source_adapter_cc_proto",
@@ -210,7 +211,17 @@ cc_library(
         "//tensorflow_serving/apis:model_management_cc_proto",
         "//tensorflow_serving/apis:model_service_cc_proto",
         "//tensorflow_serving/util:status_util",
-        "@com_github_grpc_grpc//:grpc++",
+    ],
+)
+
+cc_library(
+    name = "prediction_service_util",
+    srcs = ["prediction_service_util.cc"],
+    hdrs = ["prediction_service_util.h"],
+    deps = [
+        ":server_core",
+        "//tensorflow_serving/apis:prediction_service_cc_proto",
+        "//tensorflow_serving/servables/tensorflow:thread_pool_factory",
     ],
 )
 
@@ -220,22 +231,17 @@ cc_library(
     hdrs = ["prediction_service_impl.h"],
     deps = [
         ":grpc_status_util",
-        ":server_core",
-        "//tensorflow_serving/apis:classification_cc_proto",
-        "//tensorflow_serving/apis:get_model_metadata_cc_proto",
-        "//tensorflow_serving/apis:inference_cc_proto",
-        "//tensorflow_serving/apis:predict_cc_proto",
+        ":prediction_service_util",
         "//tensorflow_serving/apis:prediction_service_cc_proto",
-        "//tensorflow_serving/apis:regression_cc_proto",
         "//tensorflow_serving/servables/tensorflow:classification_service",
         "//tensorflow_serving/servables/tensorflow:get_model_metadata_impl",
         "//tensorflow_serving/servables/tensorflow:multi_inference_helper",
         "//tensorflow_serving/servables/tensorflow:predict_impl",
         "//tensorflow_serving/servables/tensorflow:regression_service",
         "//tensorflow_serving/servables/tensorflow:thread_pool_factory",
+        "//tensorflow_serving/servables/tensorflow:util",
         "@com_github_grpc_grpc//:grpc++",
         "@org_tensorflow//tensorflow/core:lib",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
 )
 
@@ -255,13 +261,17 @@ cc_library(
     hdrs = ["http_server.h"],
     deps = [
         ":http_rest_api_handler",
+        ":http_rest_api_util",
         ":server_core",
+        ":server_init",
         "//tensorflow_serving/config:monitoring_config_cc_proto",
+        "//tensorflow_serving/servables/tensorflow:util",
         "//tensorflow_serving/util:prometheus_exporter",
         "//tensorflow_serving/util:threadpool_executor",
         "//tensorflow_serving/util/net_http/server/public:http_server",
         "//tensorflow_serving/util/net_http/server/public:http_server_api",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@com_googlesource_code_re2//:re2",
         "@org_tensorflow//tensorflow/core:lib",
     ],
@@ -297,12 +307,22 @@ cc_test(
 )
 
 cc_library(
+    name = "http_rest_api_handler_base",
+    hdrs = ["http_rest_api_handler_base.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@org_tensorflow//tensorflow/core:lib",
+    ],
+)
+
+cc_library(
     name = "http_rest_api_handler",
     srcs = ["http_rest_api_handler.cc"],
     hdrs = ["http_rest_api_handler.h"],
     visibility = ["//visibility:public"],
     deps = [
         ":get_model_status_impl",
+        ":http_rest_api_handler_base",
         ":http_rest_api_util",
         ":server_core",
         "//tensorflow_serving/apis:model_cc_proto",
@@ -334,6 +354,27 @@ SUPPORTED_TENSORFLOW_OPS = if_v2([]) + if_not_v2([
 ]
 
 cc_library(
+    name = "server_init",
+    srcs = [
+        "server_init.cc",
+    ],
+    hdrs = ["server_init.h"],
+    deps = [
+        ":http_rest_api_handler",
+        ":http_rest_api_handler_base",
+        ":platform_config_util",
+        ":prediction_service_impl",
+        ":server_core",
+        "//tensorflow_serving/apis:prediction_service_cc_proto",
+        "//tensorflow_serving/servables/tensorflow:saved_model_bundle_source_adapter",
+        "//tensorflow_serving/servables/tensorflow:session_bundle_config_cc_proto",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_protobuf//:cc_wkt_protos",
+        "@org_tensorflow//tensorflow/core:lib",
+    ],
+)
+
+cc_library(
     name = "server_lib",
     srcs = [
         "server.cc",
@@ -342,8 +383,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":http_server",
+        ":server_init",
         ":model_platform_types",
-        ":platform_config_util",
         ":prediction_service_impl",
         ":server_core",
         ":grpc_status_util",
@@ -395,7 +436,8 @@ cc_library(
         "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core/platform/cloud:gcs_file_system",
     ] + if_libtpu([
-        "@org_tensorflow//tensorflow/core/tpu:tpu_model_server_initializer",
+        "@org_tensorflow//tensorflow/core/tpu:tpu_global_init",
+        "@org_tensorflow//tensorflow/core/tpu:tpu_api_dlsym_initializer",
     ]),
 )
 
@@ -441,6 +483,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY2AND3",
     tags = [
+        "manual",  # Missing grpc dependency.
         "noasan",  # b/136281879
         "nomsan",  # b/165917680
     ],
@@ -448,7 +491,6 @@ py_test(
         "//tensorflow_serving/apis:model_service_proto_py_pb2",
         "//tensorflow_serving/apis:prediction_service_proto_py_pb2",
         "//tensorflow_serving/model_servers/test_util:tensorflow_model_server_test_base",
-        "@org_tensorflow//tensorflow:tensorflow_py",
         "@six_archive//:six",
     ],
 )
@@ -458,10 +500,7 @@ py_binary(
     srcs = ["tensorflow_model_server_test_client.py"],
     python_version = "PY3",
     srcs_version = "PY2AND3",
-    deps = [
-        "//tensorflow_serving/apis:prediction_service_proto_py_pb2",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = ["//tensorflow_serving/apis:prediction_service_proto_py_pb2"],
 )
 
 py_binary(
@@ -469,9 +508,6 @@ py_binary(
     srcs = ["profiler_client.py"],
     python_version = "PY3",
     srcs_version = "PY2AND3",
-    deps = [
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
 )
 
 pkg_tar(
@@ -490,7 +526,7 @@ pkg_deb(
     homepage = "https://github.com/tensorflow/serving",
     maintainer = "TensorFlow Serving team",
     package = "tensorflow-model-server",
-    version = "2.7.1",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
+    version = "2.9.2",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
 )
 
 # Build with '-c opt'
@@ -501,5 +537,5 @@ pkg_deb(
     homepage = "https://github.com/tensorflow/serving",
     maintainer = "TensorFlow Serving team",
     package = "tensorflow-model-server-universal",
-    version = "2.7.1",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
+    version = "2.9.2",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
 )

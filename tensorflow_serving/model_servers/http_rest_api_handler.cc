@@ -46,18 +46,17 @@ limitations under the License.
 namespace tensorflow {
 namespace serving {
 
-using protobuf::util::JsonPrintOptions;
-using protobuf::util::MessageToJsonString;
 using tensorflow::serving::ServerCore;
 using tensorflow::serving::TensorflowPredictor;
 
 const char* const HttpRestApiHandler::kPathRegex = kHTTPRestApiHandlerPathRegex;
 
-HttpRestApiHandler::HttpRestApiHandler(const RunOptions& run_options,
-                                       ServerCore* core)
-    : run_options_(run_options),
-      core_(core),
-      predictor_(new TensorflowPredictor()) {}
+HttpRestApiHandler::HttpRestApiHandler(int timeout_in_ms, ServerCore* core)
+    : run_options_(), core_(core), predictor_(new TensorflowPredictor()) {
+  if (timeout_in_ms > 0) {
+    run_options_.set_timeout_in_ms(timeout_in_ms);
+  }
+}
 
 HttpRestApiHandler::~HttpRestApiHandler() {}
 
@@ -72,7 +71,7 @@ Status HttpRestApiHandler::ProcessRequest(
   string model_subresource;
   Status status = errors::InvalidArgument("Malformed request: ", http_method,
                                           " ", request_path);
-  absl::optional<int64> model_version;
+  absl::optional<int64_t> model_version;
   absl::optional<string> model_version_label;
   bool parse_successful;
 
@@ -109,7 +108,7 @@ Status HttpRestApiHandler::ProcessRequest(
 
 Status HttpRestApiHandler::ProcessClassifyRequest(
     const absl::string_view model_name,
-    const absl::optional<int64>& model_version,
+    const absl::optional<int64_t>& model_version,
     const absl::optional<absl::string_view>& model_version_label,
     const absl::string_view request_body, string* output) {
   ::google::protobuf::Arena arena;
@@ -131,7 +130,7 @@ Status HttpRestApiHandler::ProcessClassifyRequest(
 
 Status HttpRestApiHandler::ProcessRegressRequest(
     const absl::string_view model_name,
-    const absl::optional<int64>& model_version,
+    const absl::optional<int64_t>& model_version,
     const absl::optional<absl::string_view>& model_version_label,
     const absl::string_view request_body, string* output) {
   ::google::protobuf::Arena arena;
@@ -151,7 +150,7 @@ Status HttpRestApiHandler::ProcessRegressRequest(
 
 Status HttpRestApiHandler::ProcessPredictRequest(
     const absl::string_view model_name,
-    const absl::optional<int64>& model_version,
+    const absl::optional<int64_t>& model_version,
     const absl::optional<absl::string_view>& model_version_label,
     const absl::string_view request_body, string* output) {
   ::google::protobuf::Arena arena;
@@ -179,7 +178,7 @@ Status HttpRestApiHandler::ProcessPredictRequest(
 
 Status HttpRestApiHandler::ProcessModelStatusRequest(
     const absl::string_view model_name,
-    const absl::optional<int64>& model_version,
+    const absl::optional<int64_t>& model_version,
     const absl::optional<absl::string_view>& model_version_label,
     string* output) {
   // We do not yet support returning status of all models
@@ -204,7 +203,7 @@ Status HttpRestApiHandler::ProcessModelStatusRequest(
 
 Status HttpRestApiHandler::ProcessModelMetadataRequest(
     const absl::string_view model_name,
-    const absl::optional<int64>& model_version,
+    const absl::optional<int64_t>& model_version,
     const absl::optional<absl::string_view>& model_version_label,
     string* output) {
   if (model_name.empty()) {

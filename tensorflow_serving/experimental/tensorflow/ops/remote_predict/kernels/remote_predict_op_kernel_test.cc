@@ -20,6 +20,7 @@ limitations under the License.
 #include "tensorflow/cc/ops/const_op.h"
 #include "tensorflow/core/framework/tensor_testutil.h"
 #include "tensorflow/core/lib/core/status_test_util.h"
+#include "tensorflow/core/platform/status.h"
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
 #include "tensorflow_serving/experimental/tensorflow/ops/remote_predict/cc/ops/remote_predict_op.h"
 
@@ -39,7 +40,9 @@ class MockPredictionService {
     return ::absl::OkStatus();
   }
 
-  MockRpc* CreateRpc(absl::Duration max_rpc_deadline) { return new MockRpc; }
+  StatusOr<MockRpc*> CreateRpc(absl::Duration max_rpc_deadline) {
+    return new MockRpc;
+  }
 
   // The model_name in request determines response and/or status.
   void Predict(MockRpc* rpc, PredictRequest* request, PredictResponse* response,
@@ -90,7 +93,7 @@ using RemotePredict = ops::TfServingRemotePredict;
     const absl::optional<::absl::Duration> deadline = absl::nullopt,
     bool fail_on_rpc_error = true,
     const string& target_address = "target_address",
-    int64 target_model_version = -1, const string& signature_name = "") {
+    int64_t target_model_version = -1, const string& signature_name = "") {
   const Scope scope = Scope::DisabledShapeInferenceScope();
   // Model_name will decide the result of the RPC.
   auto input_tensor_aliases = ops::Const(
