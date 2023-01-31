@@ -50,12 +50,29 @@ limitations under the License.
 #include "tensorflow/compiler/jit/flags.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/init_main.h"
-#if defined(LIBTPU_ON_GCE)
-#include "tensorflow/core/tpu/tpu_global_init.h"
-#endif
 #include "tensorflow/core/util/command_line_flags.h"
 #include "tensorflow_serving/model_servers/server.h"
 #include "tensorflow_serving/model_servers/version.h"
+
+#if defined(LIBTPU_ON_GCE) || defined(PLATFORM_CLOUD_TPU)
+#include "tensorflow/core/protobuf/tpu/topology.pb.h"
+#include "tensorflow/core/tpu/tpu_global_init.h"
+
+void InitializeTPU(tensorflow::serving::main::Server::Options& server_options) {
+  std::cout << "Initializing TPU system.";
+  tensorflow::tpu::TopologyProto tpu_topology;
+  TF_QCHECK_OK(tensorflow::InitializeTPUSystemGlobally(
+      tensorflow::Env::Default(), &tpu_topology))
+      << "Failed to initialize TPU system.";
+  std::cout << "Initialized TPU topology: " << tpu_topology.DebugString();
+  server_options.num_request_iterations_for_warmup =
+      tpu_topology.num_tpu_devices_per_task();
+  server_options.enforce_session_run_timeout = false;
+  if (server_options.saved_model_tags.empty()) {
+    server_options.saved_model_tags = "tpu,serve";
+  }
+}
+#endif
 
 int main(int argc, char** argv) {
   tensorflow::serving::main::Server::Options options;
@@ -93,6 +110,18 @@ int main(int argc, char** argv) {
                        "If non-empty, read an ascii BatchingParameters "
                        "protobuf from the supplied file name and use the "
                        "contained values instead of the defaults."),
+      tensorflow::Flag(
+          "enable_per_model_batching_parameters",
+          &options.enable_per_model_batching_params,
+          "Enables model specific batching params like batch "
+          "sizes, timeouts, batching feature flags to be read from "
+          "`batching_params.pbtxt` file present in SavedModel dir "
+          "of the model. Associated params in the global config "
+          "from --batching_parameters_file are *ignored*. Only "
+          "threadpool (name and size) related params are used from "
+          "the global config, as this threadpool is shared across "
+          "all the models that want to batch requests. This option "
+          "is only applicable when --enable_batching flag is set."),
       tensorflow::Flag("model_config_file", &options.model_config_file,
                        "If non-empty, read an ascii ModelServerConfig "
                        "protobuf from the supplied file name, and serve the "
@@ -269,10 +298,9 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-#if defined(LIBTPU_ON_GCE)
-  std::cout << "Initializing TPU system.";
-  TF_QCHECK_OK(tensorflow::InitializeTPUSystemGlobally())
-      << "Failed to intialize the TPU system.";
+  tensorflow::port::InitMain(argv[0], &argc, &argv);
+#if defined(LIBTPU_ON_GCE) || defined(PLATFORM_CLOUD_TPU)
+  InitializeTPU(options);
 #endif
 
   if (display_version) {
@@ -281,7 +309,6 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  tensorflow::port::InitMain(argv[0], &argc, &argv);
   if (argc != 1) {
     std::cout << "unknown argument: " << argv[1] << "\n" << usage;
   }

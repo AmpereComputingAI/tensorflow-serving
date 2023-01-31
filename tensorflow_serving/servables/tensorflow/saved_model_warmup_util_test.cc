@@ -46,29 +46,37 @@ namespace serving {
 namespace internal {
 namespace {
 
-class SavedModelBundleWarmupUtilTest : public ::testing::Test {
+class SavedModelBundleWarmupUtilTest : public ::testing::TestWithParam<bool> {
  protected:
   SavedModelBundleWarmupUtilTest() : warmup_request_counter_(0) {}
+  bool ParallelWarmUp() { return GetParam(); }
+  ModelWarmupOptions CreateModelWarmupOptions() {
+    ModelWarmupOptions options;
+    if (ParallelWarmUp()) {
+      options.mutable_num_model_warmup_threads()->set_value(3);
+    }
+    return options;
+  }
   void FakeRunWarmupRequest() { warmup_request_counter_++; }
   int warmup_request_counter_;
 };
 
-TEST_F(SavedModelBundleWarmupUtilTest, NoWarmupDataFile) {
+TEST_P(SavedModelBundleWarmupUtilTest, NoWarmupDataFile) {
   string base_path = io::JoinPath(testing::TmpDir(), "NoWarmupDataFile");
   TF_ASSERT_OK(Env::Default()->RecursivelyCreateDir(
       io::JoinPath(base_path, kSavedModelAssetsExtraDirectory)));
 
   SavedModelBundle saved_model_bundle;
   AddSignatures(&saved_model_bundle.meta_graph_def);
-  TF_EXPECT_OK(RunSavedModelWarmup(ModelWarmupOptions(), base_path,
+  TF_EXPECT_OK(RunSavedModelWarmup(CreateModelWarmupOptions(), base_path,
                                    [this](PredictionLog prediction_log) {
                                      this->FakeRunWarmupRequest();
-                                     return Status::OK();
+                                     return OkStatus();
                                    }));
   EXPECT_EQ(warmup_request_counter_, 0);
 }
 
-TEST_F(SavedModelBundleWarmupUtilTest, WarmupDataFileEmpty) {
+TEST_P(SavedModelBundleWarmupUtilTest, WarmupDataFileEmpty) {
   string base_path = io::JoinPath(testing::TmpDir(), "WarmupDataFileEmpty");
   TF_ASSERT_OK(Env::Default()->RecursivelyCreateDir(
       io::JoinPath(base_path, kSavedModelAssetsExtraDirectory)));
@@ -79,15 +87,15 @@ TEST_F(SavedModelBundleWarmupUtilTest, WarmupDataFileEmpty) {
   TF_ASSERT_OK(WriteWarmupData(fname, warmup_records, 0));
   SavedModelBundle saved_model_bundle;
   AddSignatures(&saved_model_bundle.meta_graph_def);
-  TF_EXPECT_OK(RunSavedModelWarmup(ModelWarmupOptions(), base_path,
+  TF_EXPECT_OK(RunSavedModelWarmup(CreateModelWarmupOptions(), base_path,
                                    [this](PredictionLog prediction_log) {
                                      this->FakeRunWarmupRequest();
-                                     return Status::OK();
+                                     return OkStatus();
                                    }));
   EXPECT_EQ(warmup_request_counter_, 0);
 }
 
-TEST_F(SavedModelBundleWarmupUtilTest, UnsupportedFileFormat) {
+TEST_P(SavedModelBundleWarmupUtilTest, UnsupportedFileFormat) {
   string base_path = io::JoinPath(testing::TmpDir(), "UnsupportedFileFormat");
   TF_ASSERT_OK(Env::Default()->RecursivelyCreateDir(
       io::JoinPath(base_path, kSavedModelAssetsExtraDirectory)));
@@ -104,8 +112,8 @@ TEST_F(SavedModelBundleWarmupUtilTest, UnsupportedFileFormat) {
   SavedModelBundle saved_model_bundle;
   AddSignatures(&saved_model_bundle.meta_graph_def);
   const Status status = RunSavedModelWarmup(
-      ModelWarmupOptions(), base_path,
-      [](PredictionLog prediction_log) { return Status::OK(); });
+      CreateModelWarmupOptions(), base_path,
+      [](PredictionLog prediction_log) { return OkStatus(); });
   ASSERT_FALSE(status.ok());
   EXPECT_EQ(::tensorflow::error::DATA_LOSS, status.code()) << status;
   EXPECT_THAT(status.ToString(),
@@ -113,7 +121,7 @@ TEST_F(SavedModelBundleWarmupUtilTest, UnsupportedFileFormat) {
                   "Please verify your warmup data is in TFRecord format"));
 }
 
-TEST_F(SavedModelBundleWarmupUtilTest, TooManyWarmupRecords) {
+TEST_P(SavedModelBundleWarmupUtilTest, TooManyWarmupRecords) {
   string base_path = io::JoinPath(testing::TmpDir(), "TooManyWarmupRecords");
   TF_ASSERT_OK(Env::Default()->RecursivelyCreateDir(
       io::JoinPath(base_path, kSavedModelAssetsExtraDirectory)));
@@ -127,16 +135,16 @@ TEST_F(SavedModelBundleWarmupUtilTest, TooManyWarmupRecords) {
   SavedModelBundle saved_model_bundle;
   AddSignatures(&saved_model_bundle.meta_graph_def);
   const Status status = RunSavedModelWarmup(
-      ModelWarmupOptions(), base_path,
-      [](PredictionLog prediction_log) { return Status::OK(); });
+      CreateModelWarmupOptions(), base_path,
+      [](PredictionLog prediction_log) { return OkStatus(); });
   ASSERT_FALSE(status.ok());
   EXPECT_EQ(::tensorflow::error::INVALID_ARGUMENT, status.code()) << status;
   EXPECT_THAT(
       status.ToString(),
-      ::testing::HasSubstr("Number of warmup records exceeeds the maximum"));
+      ::testing::HasSubstr("Number of warmup records exceeds the maximum"));
 }
 
-TEST_F(SavedModelBundleWarmupUtilTest, UnparsableRecord) {
+TEST_P(SavedModelBundleWarmupUtilTest, UnparsableRecord) {
   string base_path = io::JoinPath(testing::TmpDir(), "UnparsableRecord");
   TF_ASSERT_OK(Env::Default()->RecursivelyCreateDir(
       io::JoinPath(base_path, kSavedModelAssetsExtraDirectory)));
@@ -147,15 +155,15 @@ TEST_F(SavedModelBundleWarmupUtilTest, UnparsableRecord) {
   TF_ASSERT_OK(WriteWarmupData(fname, warmup_records, 10));
   SavedModelBundle saved_model_bundle;
   const Status status = RunSavedModelWarmup(
-      ModelWarmupOptions(), base_path,
-      [](PredictionLog prediction_log) { return Status::OK(); });
+      CreateModelWarmupOptions(), base_path,
+      [](PredictionLog prediction_log) { return OkStatus(); });
   ASSERT_FALSE(status.ok());
   EXPECT_EQ(::tensorflow::error::INVALID_ARGUMENT, status.code()) << status;
   EXPECT_THAT(status.ToString(),
               ::testing::HasSubstr("Failed to parse warmup record"));
 }
 
-TEST_F(SavedModelBundleWarmupUtilTest, RunFailure) {
+TEST_P(SavedModelBundleWarmupUtilTest, RunFailure) {
   string base_path = io::JoinPath(testing::TmpDir(), "RunFailure");
   TF_ASSERT_OK(Env::Default()->RecursivelyCreateDir(
       io::JoinPath(base_path, kSavedModelAssetsExtraDirectory)));
@@ -169,14 +177,15 @@ TEST_F(SavedModelBundleWarmupUtilTest, RunFailure) {
   SavedModelBundle saved_model_bundle;
   AddSignatures(&saved_model_bundle.meta_graph_def);
   Status status = RunSavedModelWarmup(
-      ModelWarmupOptions(), base_path, [](PredictionLog prediction_log) {
+      CreateModelWarmupOptions(), base_path, [](PredictionLog prediction_log) {
         return errors::InvalidArgument("Run failed");
       });
   ASSERT_FALSE(status.ok());
   EXPECT_EQ(::tensorflow::error::INVALID_ARGUMENT, status.code()) << status;
   EXPECT_THAT(status.ToString(), ::testing::HasSubstr("Run failed"));
 }
-
+INSTANTIATE_TEST_SUITE_P(ParallelWarmUp, SavedModelBundleWarmupUtilTest,
+                         ::testing::Bool());
 }  // namespace
 }  // namespace internal
 }  // namespace serving

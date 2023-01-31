@@ -12,8 +12,6 @@
 set -e
 set -x
 
-TF_VERSION=2.7.1
-
 JOBS=$(grep -c processor /proc/cpuinfo)
 
 if [[ -n $CI_BUILD ]]; then

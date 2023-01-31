@@ -29,8 +29,8 @@ limitations under the License.
 #include "tensorflow_serving/model_servers/server_core.h"
 #include "tensorflow_serving/model_servers/server_init.h"
 #include "tensorflow_serving/servables/tensorflow/util.h"
+#include "tensorflow_serving/util/net_http/public/response_code_enum.h"
 #include "tensorflow_serving/util/net_http/server/public/httpserver.h"
-#include "tensorflow_serving/util/net_http/server/public/response_code_enum.h"
 #include "tensorflow_serving/util/net_http/server/public/server_request_interface.h"
 #include "tensorflow_serving/util/prometheus_exporter.h"
 #include "tensorflow_serving/util/threadpool_executor.h"
@@ -166,7 +166,7 @@ class RestApiRequestDispatcher {
     if (req->http_method() == "OPTIONS") {
       absl::string_view origin_header = req->GetRequestHeader("Origin");
       if (RE2::PartialMatch(origin_header, "https?://")) {
-        status = Status::OK();
+        status = OkStatus();
       } else {
         status = errors::FailedPrecondition(
             "Origin header is missing in CORS preflight");

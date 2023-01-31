@@ -34,6 +34,7 @@ limitations under the License.
 #include "tensorflow_serving/apis/internal/serialized_input.pb.h"
 #include "tensorflow_serving/apis/model.pb.h"
 #include "tensorflow_serving/resources/resource_values.h"
+#include "tensorflow_serving/util/threadpool_executor.h"
 
 namespace tensorflow {
 namespace serving {
@@ -95,35 +96,6 @@ int NumInputExamples(const internal::SerializedInput& input) {
 
 std::atomic<bool> signature_method_check{true};
 
-// Returns all the descendants, both directories and files, recursively under
-// 'dirname'. The paths returned are all prefixed with 'dirname'.
-Status GetAllDescendants(const string& dirname, FileProbingEnv* env,
-                         std::vector<string>* const descendants) {
-  descendants->clear();
-  // Make sure that dirname exists;
-  TF_RETURN_IF_ERROR(env->FileExists(dirname));
-  std::deque<string> dir_q;      // Queue for the BFS
-  std::vector<string> dir_list;  // List of all dirs discovered
-  dir_q.push_back(dirname);
-  // Do a BFS on the directory to discover all immediate children.
-  while (!dir_q.empty()) {
-    const string dir = dir_q.front();
-    dir_q.pop_front();
-    std::vector<string> children;
-    // GetChildren might fail if we don't have appropriate permissions.
-    TF_RETURN_IF_ERROR(env->GetChildren(dir, &children));
-    for (const string& child : children) {
-      const string child_path = io::JoinPath(dir, child);
-      descendants->push_back(child_path);
-      // If the child is a directory add it to the queue.
-      if (env->IsDirectory(child_path).ok()) {
-        dir_q.push_back(child_path);
-      }
-    }
-  }
-  return Status::OK();
-}
-
 }  // namespace
 
 namespace internal {
@@ -162,10 +134,16 @@ Status InputToSerializedExampleTensor(const Input& input, Tensor* examples) {
   // time get the count of num_examples as well.
   bool parse_serialized_input_ok = false;
 #if defined(PLATFORM_GOOGLE)
-  // Benchmark ('BM_InputToSerializedExample') can help measure the effect of
-  // changes in the future.
-  parse_serialized_input_ok =
-      serialized_input.ParseFromCord(input.SerializeAsCord());
+  {
+    // Benchmark ('BM_InputToSerializedExample') can help measure the effect of
+    // changes in the future.
+    absl::Cord tmp;
+    if (!input.SerializeToCord(&tmp)) {
+      return errors::InvalidArgument("Input failed to serialize. Size = ",
+                                     input.ByteSizeLong());
+    }
+    parse_serialized_input_ok = serialized_input.ParseFromCord(tmp);
+  }
 #else
   parse_serialized_input_ok =
       serialized_input.ParseFromString(input.SerializeAsString());
@@ -219,7 +197,7 @@ Status InputToSerializedExampleTensor(const Input& input, Tensor* examples) {
       return errors::Unimplemented(
           "Input with kind ", serialized_input.kind_case(), " not supported.");
   }
-  return Status::OK();
+  return OkStatus();
 }
 
 Status PerformOneShotTensorComputation(
@@ -244,7 +222,7 @@ Status PerformOneShotTensorComputation(
   if (runtime_latency != nullptr) {
     *runtime_latency = end_microseconds - start_microseconds;
   }
-  return Status::OK();
+  return OkStatus();
 }
 
 Status PerformOneShotTensorComputation(
@@ -291,18 +269,56 @@ Status GetModelDiskSize(const string& path, FileProbingEnv* env,
   if (env == nullptr) {
     return errors::Internal("FileProbingEnv not set");
   }
+  // Make sure that path exists.
+  TF_RETURN_IF_ERROR(env->FileExists(path));
 
-  std::vector<string> descendants;
-  TF_RETURN_IF_ERROR(GetAllDescendants(path, env, &descendants));
   *total_file_size = 0;
-  for (const string& descendant : descendants) {
-    if (!(env->IsDirectory(descendant).ok())) {
-      uint64_t file_size;
-      TF_RETURN_IF_ERROR(env->GetFileSize(descendant, &file_size));
-      *total_file_size += file_size;
+  std::deque<string> dir_q;  // Queue for the BFS
+
+  dir_q.push_back(path);
+  // Do a BFS on the directory to discover all immediate children.
+  while (!dir_q.empty()) {
+    const string dir = dir_q.front();
+    dir_q.pop_front();
+    std::vector<string> children;
+    // GetChildren might fail if we don't have appropriate permissions.
+    TF_RETURN_IF_ERROR(env->GetChildren(dir, &children));
+    // Multi-threaded writes are safe for int but not bool, so we use int below.
+    std::vector<int> child_is_dir(children.size());
+    std::vector<StatusOr<uint64_t>> children_sizes(children.size());
+
+    {
+      // Filesystem operations may block for a long time so this process is
+      // vastly accelerated by parallelizing the iteration over children.
+      ThreadPoolExecutor executor(Env::Default(), "ModelDiskSizePool", 256);
+      for (int i = 0; i < children.size(); i++) {
+        const string child_path = io::JoinPath(dir, children[i]);
+        children[i] = child_path;
+        executor.Schedule(
+            [i, child_path, env, &child_is_dir, &children_sizes]() {
+              if (env->IsDirectory(child_path).ok()) {
+                // If the child is a directory add it to the queue.
+                child_is_dir[i] = 1;
+              } else {
+                // Otherwise, add its file size to total_file_size.
+                uint64_t file_size;
+                Status status = env->GetFileSize(child_path, &file_size);
+                children_sizes[i] =
+                    status.ok() ? StatusOr<uint64_t>(file_size) : status;
+              }
+            });
+      }
+    }
+    for (int i = 0; i < children.size(); i++) {
+      if (child_is_dir[i] == 1) {
+        dir_q.push_back(children[i]);
+      } else {
+        TF_RETURN_IF_ERROR(children_sizes[i].status());
+        *total_file_size += *children_sizes[i];
+      }
     }
   }
-  return Status::OK();
+  return OkStatus();
 }
 
 Status EstimateResourceFromPathUsingDiskState(const string& path,
@@ -321,7 +337,7 @@ Status EstimateResourceFromPathUsingDiskState(const string& path,
   ram_resource->set_kind(resource_kinds::kRamBytes);
   ram_entry->set_quantity(ram_requirement);
 
-  return Status::OK();
+  return OkStatus();
 }
 
 void RecordRuntimeLatency(const string& model_name, const string& api,

@@ -15,6 +15,8 @@ limitations under the License.
 
 #include "tensorflow_serving/servables/tensorflow/bundle_factory_test_util.h"
 
+#include <queue>
+
 #include "tensorflow/cc/saved_model/constants.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_testutil.h"
@@ -98,11 +100,13 @@ SignatureDef GetTestSessionSignature() {
   return signature;
 }
 
-void TestSingleRequest(Session* session) {
-  Tensor input = test::AsTensor<float>({100.0f, 42.0f}, {2});
+void TestSingleRequest(Session* session, int input_batch_size) {
+  Tensor input(DT_FLOAT, TensorShape({input_batch_size}));
+  test::FillIota<float>(&input, 100.0f);
   // half plus two: output should be input / 2 + 2.
-  Tensor expected_output =
-      test::AsTensor<float>({100.0f / 2 + 2, 42.0f / 2 + 2}, {2});
+  Tensor expected_output(DT_FLOAT, TensorShape({input_batch_size}));
+  test::FillFn<float>(&expected_output,
+                      [](int i) -> float { return (100.0f + i) / 2 + 2; });
 
   // Note that "x" and "y" are the actual names of the nodes in the graph.
   // The saved manifest binds these to "input" and "output" respectively, but
@@ -122,14 +126,17 @@ void TestSingleRequest(Session* session) {
   test::ExpectTensorEqual<float>(expected_output, single_output);
 }
 
-void TestMultipleRequests(int num_requests, Session* session) {
+void TestMultipleRequests(Session* session, int num_requests,
+                          int input_batch_size) {
   std::vector<std::unique_ptr<Thread>> request_threads;
   request_threads.reserve(num_requests);
   for (int i = 0; i < num_requests; ++i) {
     request_threads.push_back(
         std::unique_ptr<Thread>(Env::Default()->StartThread(
             ThreadOptions(), strings::StrCat("thread_", i),
-            [session] { TestSingleRequest(session); })));
+            [session, input_batch_size] {
+              TestSingleRequest(session, input_batch_size);
+            })));
   }
 }
 
@@ -149,6 +156,36 @@ ResourceAllocation GetExpectedResourceEstimate(double total_file_size) {
   ram_resource->set_kind(resource_kinds::kRamBytes);
   ram_entry->set_quantity(expected_ram_requirement);
   return resource_alloc;
+}
+
+void CopyDirOrDie(const string& src_dir, const string& dst_dir) {
+  int64_t u_files = 0;
+  int64_t u_dirs = 0;
+  if (Env::Default()->IsDirectory(dst_dir).ok()) {
+    TF_ASSERT_OK(Env::Default()->DeleteRecursively(dst_dir, &u_files, &u_dirs));
+  }
+  TF_ASSERT_OK(Env::Default()->RecursivelyCreateDir(dst_dir));
+  std::queue<std::string> dirs_to_copy;
+  dirs_to_copy.push(src_dir);
+  while (!dirs_to_copy.empty()) {
+    const string dir = dirs_to_copy.front();
+    dirs_to_copy.pop();
+    std::vector<std::string> children;
+    TF_ASSERT_OK(Env::Default()->GetChildren(dir, &children));
+    for (const string& child : children) {
+      const string child_path = io::JoinPath(dir, child);
+      StringPiece remainder = child_path;
+      CHECK(str_util::ConsumePrefix(&remainder, src_dir));
+      if (Env::Default()->IsDirectory(child_path).ok()) {
+        TF_ASSERT_OK(
+            Env::Default()->CreateDir(io::JoinPath(dst_dir, remainder)));
+        dirs_to_copy.push(child_path);
+      } else {
+        TF_ASSERT_OK(Env::Default()->CopyFile(
+            child_path, io::JoinPath(dst_dir, remainder)));
+      }
+    }
+  }
 }
 
 }  // namespace test_util

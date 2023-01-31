@@ -5,9 +5,17 @@ the initialization code from TensorFlow Serving's WORKSPACE file.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
 def tf_serving_workspace():
     """All TensorFlow Serving external dependencies."""
+
+    # ===== Bazel skylib dependency =====
+    http_archive(
+        name = "bazel_skylib",
+        sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
+        url = "https://github.com/bazelbuild/bazel-skylib/releases/download/1.3.0/bazel-skylib-1.3.0.tar.gz",
+    )
 
     # ===== Bazel package rules dependency =====
     http_archive(
@@ -59,9 +67,9 @@ def tf_serving_workspace():
     # https://github.com/tensorflow/text/blob/master/oss_scripts/model_server/save_models.py
     http_archive(
         name = "org_tensorflow_text",
-        sha256 = "0991ff93959a0e3ec7d16ba9d9ff9b4463bba565da402f1460cdbfa731112034",
-        strip_prefix = "text-2.6.0",
-        url = "https://github.com/tensorflow/text/archive/v2.6.0.zip",
+        sha256 = "774af1b75c6af53f0ee1be28a8d2d75f2fc60c112f615418a0ee76f8c3d59c0f",
+        strip_prefix = "text-2.8.2",
+        url = "https://github.com/tensorflow/text/archive/v2.8.2.zip",
         patches = ["@//third_party/tf_text:tftext.patch"],
         patch_args = ["-p1"],
         repo_mapping = {"@com_google_re2": "@com_googlesource_code_re2"},
@@ -69,9 +77,24 @@ def tf_serving_workspace():
 
     http_archive(
         name = "com_google_sentencepiece",
-        strip_prefix = "sentencepiece-1.0.0",
-        sha256 = "c05901f30a1d0ed64cbcf40eba08e48894e1b0e985777217b7c9036cac631346",
-        url = "https://github.com/google/sentencepiece/archive/1.0.0.zip",
+        strip_prefix = "sentencepiece-0.1.96",
+        sha256 = "8409b0126ebd62b256c685d5757150cf7fcb2b92a2f2b98efb3f38fc36719754",
+        urls = [
+            "https://github.com/google/sentencepiece/archive/refs/tags/v0.1.96.zip",
+        ],
+        build_file = "//third_party/sentencepiece:BUILD",
+        patches = ["//third_party/sentencepiece:sentencepiece.patch"],
+        patch_args = ["-p1"],
+    )
+
+    http_archive(
+        name = "darts_clone",
+        build_file = "//third_party/darts_clone:BUILD",
+        sha256 = "c97f55d05c98da6fcaf7f9ecc6a6dc6bc5b18b8564465f77abff8879d446491c",
+        strip_prefix = "darts-clone-e40ce4627526985a7767444b6ed6893ab6ff8983",
+        urls = [
+            "https://github.com/s-yata/darts-clone/archive/e40ce4627526985a7767444b6ed6893ab6ff8983.zip",
+        ],
     )
 
     http_archive(
@@ -82,4 +105,30 @@ def tf_serving_workspace():
             "https://mirror.bazel.build/github.com/google/glog/archive/028d37889a1e80e8a07da1b8945ac706259e5fd8.tar.gz",
             "https://github.com/google/glog/archive/028d37889a1e80e8a07da1b8945ac706259e5fd8.tar.gz",
         ],
+    )
+
+    # ==== TensorFlow Decision Forests ===
+    http_archive(
+        name = "org_tensorflow_decision_forests",
+        sha256 = "7a6b8187341da782ca93ee6e61ded14fba23f4bc0750beac291ae15277b1257e",
+        strip_prefix = "decision-forests-1.0.1",
+        url = "https://github.com/tensorflow/decision-forests/archive/refs/tags/1.0.1.zip",
+    )
+
+    http_archive(
+        name = "ydf",
+        sha256 = "ba8e69ef3889c58cde58ce201ff88ea3acf376bcb9996a55c070959d5fa0a51b",
+        strip_prefix = "yggdrasil-decision-forests-144b139d688381beea31100e75e5d621127f8ee4",
+        urls = ["https://github.com/google/yggdrasil-decision-forests/archive/144b139d688381beea31100e75e5d621127f8ee4.zip"],
+    )
+
+    # The Boost repo is organized into git sub-modules (see the list at
+    # https://github.com/boostorg/boost/tree/master/libs), which requires "new_git_repository".
+    new_git_repository(
+        name = "org_boost",
+        commit = "b7b1371294b4bdfc8d85e49236ebced114bc1d8f",  # boost-1.75.0
+        build_file = "//third_party/boost:BUILD",
+        init_submodules = True,
+        recursive_init_submodules = True,
+        remote = "https://github.com/boostorg/boost",
     )

@@ -1,3 +1,203 @@
+# Release 2.10.0
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes.
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.10.0.
+
+# Release 2.9.2
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.9.2
+
+# Release 2.7.4
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.7.4
+
+# Release 2.8.3
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes.
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.8.3.
+
+# Release 2.10.0-rc3
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.10.0-rc3
+
+# Release 2.10.0-rc2
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.10.0-rc2
+
+# Release 2.10.0-rc1
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.10.0-rc1
+
+# Release 2.10.0-rc0
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* tfs:aarch64: add aarch64 mkl bazel config to enable onednn+acl backend (commit: 1285e41acc707ba0d18e8eaf8a42c6d5110e8af8)
+* Match packages in devel and non-devel GPU with TF dockerfile. (commit: a8ffec79e0794650a4c0856c4122032e985296cc)
+* Validate batching params when creating the wrapped (batching) session, (commit: 48ff72dcb6582e989452ba870c88a2bb710ea0c4)
+* Merge and clean up implementations of `GetModelDiskSize` and `GetAllDescendants` in util.cc. (commit: 6da9c43c5f71abe361841fb3fd5eaad57fc847b1)
+* Parallelize iteration over child files in `GetModelDiskSize` (commit: d09d2efe6e9b88ef0266e5982a3e732da14dc93b)
+* Fix gpu docker build failure due to bad substitution (commit: 1d7cd5b2ba43c3d98f0c8bef6806c203b2c14592)
+* Call run_returning_status instead of run (commit: 8f9085ac678755afea6bf0067fe40a32e37ce2fa)
+* Fixing broken link for [ResNet in TensorFlow](https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet). (commit: b15210ca076b11eaa2dfd0ac2fb125be780c5d40)
+* Update the TensorFlow BatchingSession metric monitoring class to be compatible with Google's internal monitoring tools. (commit: 05b944ad9367027a1082756a3069619f44955de1)
+* Increase timeout for model tests. (commit: 677ba5a07813c4fb5a2ffb4567a7ec4a137eebe6)
+* Use pb.h for topology.proto. (commit: 21fda280bc72bdbc4386c7b0d2ad4b97264921ad)
+
+# Release 2.7.3
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* Update TF Text to v2.7.3 (commit: ee7892be7801a0e4ae9a6dd8b5f7bab06ae9c87c)
+* This release is based on TF version 2.7.3
+
+# Release 2.9.1
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* This release is based on TF version 2.9.0
+
+# Release 2.6.5
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* Rollback incompatible C++17 changes. (commit: ba0fa72b61bc2c42388b815253ba72e6830f03cf)
+* Roll forward with std::optional -> absl::optional. (commit: 009dac683bf84165b84702d177bb9a021ebef728)
+* Replace STL algorithm call with a container method (performance-inefficient-algorithm). (commit: f5bc09998e0043ce72d34b14104379163048406c)
+* Remove unused "using" decl. (commit: ffcc4a16c76c4fa1189edd9682fc486442a33e52)
+* Move status_proto to public visible apis/ (it being used by public API protos) (commit: 7f894c79fce5e58758f3cb49e858a16e3602ae80)
+* Move core/logging.proto -> apis/logging.proto (commit: 37c64b8820a923aafc1b5c8bf264fd5cce5224f3)
+* Update TF Text to v2.5.0. (commit: 48e5a9e23a1e0b2951b77c3e8f9832193d9b1851)
+* Adding python targets for config protos (commit: 757c3a6b6c8a03731dc73ff758f69a61aeddcf67)
+* Remove experimental tags from uses of gRPC C++ callback API. (commit: b355023b034ca6ef72b507920d9de2a02e0f4a2a)
+* Add new --use_alts_credentials flag, to enable building secure credentials using Google ALTS. (commit: ceba636bb7c5c98bde35d1818fd033b36300fffe)
+* Enable HTTP PATCH support in evhttp_server (commit: 6cbc4a9eb419c8078c3a4e791381cda70dd8fc78)
+
+# Release 2.9.0
+
+## Major Features and Improvements
+
+* No major features or improvements.
+
+## Breaking Changes
+
+* No breaking changes
+
+## Bug Fixes and Other Changes
+
+* Do not report successful loads that are cancelled, unload immediately instead. (commit: 923269955f5582cc26d0454992afa5c888a9377f)
+* Add a lock to avoid race condition on memoized_resource_estimate_. (commit: 83959e364e7ff1234bf47a5d8139677d1bdb18c1)
+* Update Resnet model used in K8S tutorial (commit: 6e76f6a9460bf2d37630f025fcfd3e06c4230fee)
+* Prepare for development of new http client API. (commit: 78e94e99650deae956fe20dffa9932a72ec7d765)
+* Integrate TPU initialization changes into TF Serving. (commit: 6549ef2136940cd98cfbb9ee0e29221d86101d16)
+* Allow max_execution_batch_size to be actually used by allowing (commit: 48a699a2fd32404c4b19f55077a1fb29112a0afe)
+* Delete batch_schedulers_ before thread_pool_name_ (commit: 2837812341e7c98be4717e5901286692a5dcc02a)
+* Add missing NVIDIA repository key. (commit: c0998e13451b9b83c9bdf157dd3648b2272dac59)
+* Bump minimum bazel version 5.1.1, to match with TF and root.workspace (commit: 8a02874cee6957e5817960613627a549bd80a6e9)
+* Update to use C++17 (commit: 7166e2efc6b7e63c908515c6a53d0e4fe8fa0aae)
+* Update tensorflow_model_server_test to depend on the pip installed tensorflow. (commit: 04b8676730a882cab61b7772097f2c23c0447ef9)
+* This release is based on TF version 2.9.0
+
 # Release 2.8.2
 
 ## Major Features and Improvements

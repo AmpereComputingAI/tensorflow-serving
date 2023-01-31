@@ -52,28 +52,13 @@ limitations under the License.
 #include "tensorflow_serving/servables/tensorflow/session_bundle_config.pb.h"
 #include "tensorflow_serving/servables/tensorflow/thread_pool_factory_config.pb.h"
 #include "tensorflow_serving/servables/tensorflow/util.h"
+#include "tensorflow_serving/util/proto_util.h"
 
 namespace tensorflow {
 namespace serving {
 namespace main {
 
 namespace {
-
-template <typename ProtoType>
-tensorflow::Status ParseProtoTextFile(const string& file, ProtoType* proto) {
-  std::unique_ptr<tensorflow::ReadOnlyMemoryRegion> file_data;
-  TF_RETURN_IF_ERROR(
-      tensorflow::Env::Default()->NewReadOnlyMemoryRegionFromFile(file,
-                                                                  &file_data));
-  string file_data_str(static_cast<const char*>(file_data->data()),
-                       file_data->length());
-  if (tensorflow::protobuf::TextFormat::ParseFromString(file_data_str, proto)) {
-    return tensorflow::Status::OK();
-  } else {
-    return tensorflow::errors::InvalidArgument("Invalid protobuf file: '", file,
-                                               "'");
-  }
-}
 
 tensorflow::Status LoadCustomModelConfig(
     const ::google::protobuf::Any& any,
@@ -238,6 +223,9 @@ Status Server::BuildAndStart(const Options& server_options) {
       } else {
         TF_RETURN_IF_ERROR(ParseProtoTextFile<BatchingParameters>(
             server_options.batching_parameters_file, batching_parameters));
+      }
+      if (server_options.enable_per_model_batching_params) {
+        session_bundle_config.set_enable_per_model_batching_params(true);
       }
     } else if (!server_options.batching_parameters_file.empty()) {
       return errors::InvalidArgument(
@@ -449,7 +437,7 @@ Status Server::BuildAndStart(const Options& server_options) {
                  << "Skipped exporting HTTP/REST API.";
     }
   }
-  return Status::OK();
+  return OkStatus();
 }
 
 void Server::WaitForTermination() {

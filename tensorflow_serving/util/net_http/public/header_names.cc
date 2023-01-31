@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow_serving/util/net_http/server/public/header_names.h"
+#include "tensorflow_serving/util/net_http/public/header_names.h"
 
 namespace tensorflow {
 namespace serving {

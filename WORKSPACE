@@ -4,7 +4,6 @@ workspace(name = "tf_serving")
 local_repository(
     name = "org_tensorflow",
     path = "../tensorflow-dls"
-#    path = "third_party/tensorflow-dls"
 )
 
 # Import all of TensorFlow Serving's external dependencies.
@@ -15,11 +14,8 @@ load("//tensorflow_serving:workspace.bzl", "tf_serving_workspace")
 tf_serving_workspace()
 
 # Check bazel version requirement, which is stricter than TensorFlow's.
-load(
-    "@org_tensorflow//tensorflow:version_check.bzl",
-    "check_bazel_version_at_least"
-)
-check_bazel_version_at_least("5.1.1")
+load("@bazel_skylib//lib:versions.bzl", "versions")
+versions.check("5.1.1")
 
 # Initialize TensorFlow's external dependencies.
 load("@org_tensorflow//tensorflow:workspace3.bzl", "workspace")

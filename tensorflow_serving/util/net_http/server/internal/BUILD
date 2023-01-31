@@ -6,7 +6,7 @@ package(
     ],
 )
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 cc_library(
     name = "evhttp_server",
@@ -22,6 +22,7 @@ cc_library(
     deps = [
         "//tensorflow_serving/util/net_http/compression:gzip_zlib",
         "//tensorflow_serving/util/net_http/internal:net_logging",
+        "//tensorflow_serving/util/net_http/public:shared_files",
         "//tensorflow_serving/util/net_http/server/public:http_server_api",
         "@com_github_libevent_libevent//:libevent",
         "@com_google_absl//absl/base",

@@ -12,7 +12,7 @@ package(
     features = ["-layering_check"],
 )
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 # Visibility group for clients that link in custom ops, while using the
 # vanilla TensorFlow ModelServer without any other modifications. Exclusively
@@ -351,6 +351,9 @@ SUPPORTED_TENSORFLOW_OPS = if_v2([]) + if_not_v2([
     "@org_tensorflow//tensorflow/contrib:contrib_ops_op_lib",
 ]) + [
     "@org_tensorflow_text//tensorflow_text:ops_lib",
+    # Support for TensorFlow Decision Forests inference ops.
+    # [September 2022] This dependency adds 3 MB to the model server (352 MB -> 355 MB i.e. +0.8%).
+    "@org_tensorflow_decision_forests//tensorflow_decision_forests/tensorflow/ops/inference:kernel_and_op",
 ]
 
 cc_library(
@@ -403,6 +406,7 @@ cc_library(
         "//tensorflow_serving/config:platform_config_cc_proto",
         "//tensorflow_serving/core:availability_preserving_policy",
         "//tensorflow_serving/servables/tensorflow:session_bundle_config_cc_proto",
+        "//tensorflow_serving/util:proto_util",
         "@org_tensorflow//tensorflow/core:tensorflow",
         "//tensorflow_serving/servables/tensorflow:classification_service",
         "//tensorflow_serving/servables/tensorflow:get_model_metadata_impl",
@@ -526,7 +530,7 @@ pkg_deb(
     homepage = "https://github.com/tensorflow/serving",
     maintainer = "TensorFlow Serving team",
     package = "tensorflow-model-server",
-    version = "2.9.2",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
+    version = "2.11.0",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
 )
 
 # Build with '-c opt'
@@ -537,5 +541,5 @@ pkg_deb(
     homepage = "https://github.com/tensorflow/serving",
     maintainer = "TensorFlow Serving team",
     package = "tensorflow-model-server-universal",
-    version = "2.9.2",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
+    version = "2.11.0",  # Set when releasing a new version of TensorFlow Serving (e.g. 1.0.0).
 )

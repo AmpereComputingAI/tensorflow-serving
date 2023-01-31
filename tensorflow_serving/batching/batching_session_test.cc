@@ -199,7 +199,7 @@ int GetPercentileTotal(string label) {
   if (point_set_map.find(label) == point_set_map.end()) return 0;
   const monitoring::PointSet& lps = *point_set_map.at(label);
   for (int i = 0; i < lps.points.size(); ++i) {
-    total_samples += lps.points[i]->percentiles_value.accumulator;
+    total_samples += lps.points[i]->histogram_value.sum();
   }
   return static_cast<int>(total_samples);
 }
@@ -912,7 +912,7 @@ TEST_P(BatchingSessionTest, MultipleSignatures) {
             options, process_batch_callback, &basic_scheduler));
         schedulers.push_back(basic_scheduler.get());
         *scheduler = std::move(basic_scheduler);
-        return Status::OK();
+        return OkStatus();
       };
   BatchingSessionOptions batching_session_options;
   std::unique_ptr<Session> batching_session;
@@ -980,7 +980,7 @@ TEST_P(BatchingSessionTest, EnqueuedLongerThanTimeout) {
             options, process_batch_callback, &basic_scheduler));
         scheduler = basic_scheduler.get();
         *new_scheduler = std::move(basic_scheduler);
-        return Status::OK();
+        return OkStatus();
       };
   BatchingSessionOptions batching_session_options;
   std::unique_ptr<Session> batching_session;
